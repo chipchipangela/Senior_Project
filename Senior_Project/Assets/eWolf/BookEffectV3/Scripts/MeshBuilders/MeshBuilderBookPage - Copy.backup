@@ -1,0 +1,213 @@
+﻿using System.Collections.Generic;
+using UnityEngine;
+
+namespace BookEffect.MeshBuilders
+{
+    public class MeshBuilderBookPage : IMeshBuilder
+    {
+        private readonly string _boneName;
+        private readonly float _direction = 0;
+        private readonly string _materialPageName;
+
+        public MeshBuilderBookPage(MeshBuilder meshBuilder, CreateBookMesh createBookMesh, float direction, string materialPageName, string boneName)
+        {
+            MeshBuilder = meshBuilder;
+            CreateBookMesh = createBookMesh;
+            _direction = direction;
+            _materialPageName = materialPageName;
+            _boneName = boneName;
+        }
+
+        public CreateBookMesh CreateBookMesh { get; set; }
+        public MeshBuilder MeshBuilder { get; }
+
+        public void Build()
+        {
+            MeshBuilder.SetMaterial(CreateBookMesh.InsideFrontPage.name);
+
+            List<Vector3> topArray, bottomArray;
+            BuildVectorArrays(out topArray, out bottomArray);
+
+            MeshBuilder.SetMaterial(CreateBookMesh.Pages.name);
+            int[] weights = null;
+
+            UVSet uVSet = new UVSet(
+               new Vector2(1, 1),
+               new Vector2(1, 0),
+               new Vector2(0, 1),
+               new Vector2(0f, 0)
+               );
+
+            /*
+            // far left edge
+            if (_direction > 0)
+                weights = MeshBuilder.BuildQuadMapOrder(topArray[4], topArray[5], bottomArray[4], bottomArray[5], uVSet);
+            else
+                weights = MeshBuilder.BuildQuadMapOrder(bottomArray[4], bottomArray[5], topArray[4], topArray[5], uVSet);
+            MeshBuilder.AssignVerticesToBones(weights, _boneName);
+
+            // bottom edge
+            if (_direction > 0)
+                weights = MeshBuilder.BuildQuadMapOrder(bottomArray[4], bottomArray[5], bottomArray[3], bottomArray[6], uVSet);
+            else
+                weights = MeshBuilder.BuildQuadMapOrder(bottomArray[3], bottomArray[6], bottomArray[4], bottomArray[5], uVSet);
+            MeshBuilder.AssignVerticesToBones(weights, _boneName);
+            */
+            UVSet uVSetConer = new UVSet(
+                new Vector2(0, 0),
+                new Vector2(0.00f, 1f),
+                new Vector2(0.05f, 0.9f),
+                new Vector2(0.15f, 0.5f),
+                new Vector2(0.25f, 0.0f));
+
+            // bottom edge inner corner
+            if (_direction > 0)
+                weights = MeshBuilder.BuildQuadSwap(bottomArray[6], bottomArray[3], bottomArray[2], bottomArray[1], bottomArray[0], uVSetConer);
+            else
+                weights = MeshBuilder.BuildQuad(bottomArray[6], bottomArray[3], bottomArray[2], bottomArray[1], bottomArray[0], uVSetConer);
+
+            var boneWeight = MeshBuilder.CreateBoneWeights(weights, _boneName);
+            boneWeight.BoneWeights[0].boneIndex0 = MeshBuilder.GetBoneIndex("Bone2");
+            boneWeight.BoneWeights[1].boneIndex0 = MeshBuilder.GetBoneIndex("Bone2");
+
+            MeshBuilder.Create2Bones(ref boneWeight.BoneWeights[2], "Bone2:0.8|Bone1:0.2");
+
+            /*Debug.Log($"boneWeight.BoneWeights[2].boneIndex0 {boneWeight.BoneWeights[2].boneIndex0}");
+            Debug.Log($"boneWeight.BoneWeights[2].weight0 {boneWeight.BoneWeights[2].weight0}");
+            Debug.Log($"boneWeight.BoneWeights[2].boneIndex1 {boneWeight.BoneWeights[2].boneIndex1}");
+            Debug.Log($"boneWeight.BoneWeights[2].weight1 {boneWeight.BoneWeights[2].weight1}");*/
+            /*boneWeight.BoneWeights[2].boneIndex0 = MeshBuilder.GetBoneIndex("Bone1");
+            boneWeight.BoneWeights[3].boneIndex0 = MeshBuilder.GetBoneIndex("Bone1");
+            boneWeight.BoneWeights[4].boneIndex0 = MeshBuilder.GetBoneIndex("Bone1");*/
+
+
+
+            MeshBuilder.Create2Bones(ref boneWeight.BoneWeights[3], "Bone2:0.5|Bone1:0.5");
+            MeshBuilder.Create2Bones(ref boneWeight.BoneWeights[4], "Bone1:1");
+
+            int index = MeshBuilder.Weights.Count;
+            MeshBuilder.Weights.AddRange(boneWeight.BoneWeights);
+            GameObject.Find("MarkA").transform.position = MeshBuilder.MeshVertices[index];
+            GameObject.Find("MarkB").transform.position = MeshBuilder.MeshVertices[index + 1];
+            GameObject.Find("MarkC").transform.position = MeshBuilder.MeshVertices[index + 2];
+            GameObject.Find("MarkD").transform.position = MeshBuilder.MeshVertices[index + 3];
+            GameObject.Find("MarkE").transform.position = MeshBuilder.MeshVertices[index + 4];
+
+            return;
+
+            // top edge
+            if (_direction > 0)
+                weights = MeshBuilder.BuildQuadMapOrder(topArray[3], topArray[6], topArray[4], topArray[5], uVSet);
+            else
+                weights = MeshBuilder.BuildQuadMapOrder(topArray[4], topArray[5], topArray[3], topArray[6], uVSet);
+            MeshBuilder.AssignVerticesToBones(weights, _boneName);
+
+            // top edge inner corner
+            uVSetConer = new UVSet(
+                new Vector2(0, 0),
+                new Vector2(0.25f, 0.0f),
+                new Vector2(0.17f, 0.5f),
+                new Vector2(0.05f, 0.9f),
+                new Vector2(0.0f, 1f));
+
+            if (_direction > 0)
+                weights = MeshBuilder.BuildQuadSwap(topArray[6], topArray[0], topArray[1], topArray[2], topArray[3], uVSetConer);
+            else
+                weights = MeshBuilder.BuildQuad(topArray[6], topArray[0], topArray[1], topArray[2], topArray[3], uVSetConer);
+            MeshBuilder.AssignVerticesToBones(weights, _boneName);
+
+            MeshBuilder.SetMaterial(_materialPageName);
+            UVSet pageTop = new UVSet(1, 1);
+            List<Vector3> allVerts = new List<Vector3>();
+            allVerts.AddRange(bottomArray);
+            allVerts.AddRange(topArray);
+
+            if (_direction > 0)
+                pageTop.FixOnY(allVerts.ToArray());
+            else
+                pageTop.FixOnY(allVerts.ToArray());
+
+            if (_direction > 0)
+                weights = MeshBuilder.BuildConnectedArraySwap(bottomArray, topArray, 0, 5, pageTop);
+            else
+                weights = MeshBuilder.BuildConnectedArray(bottomArray, topArray, 0, 5, pageTop);
+
+            boneWeight = MeshBuilder.CreateBoneWeights(weights, _boneName);
+            boneWeight.BoneWeights[0].boneIndex0 = MeshBuilder.GetBoneIndex("Bone1");
+            boneWeight.BoneWeights[1].boneIndex0 = MeshBuilder.GetBoneIndex("Bone1");
+            Debug.Log($"boneWeight.BoneWeights.Length: {boneWeight.BoneWeights.Length}");
+            index = MeshBuilder.Weights.Count;
+            MeshBuilder.Weights.AddRange(boneWeight.BoneWeights);
+            GameObject.Find("MarkA").transform.position = MeshBuilder.MeshVertices[index];
+        }
+
+        private void BuildVectorArrays(out List<Vector3> topArray, out List<Vector3> bottomArray)
+        {
+            float width = CreateBookMesh.BookDefinition.Width;
+            float height = CreateBookMesh.BookDefinition.Height;
+            float halfWidth = width / 2;
+            float halfHeight = height / 2;
+
+            float coverThinkness = CreateBookMesh.BookDefinition.CoverThinkness;
+            float halfThinkness = CreateBookMesh.BookDefinition.Thinkness / 2;
+
+            Vector3 posStart = new Vector3(0, coverThinkness, -halfHeight + CreateBookMesh.BookPagesDefinition.EdgeGap);
+            Vector3 posTopStart = new Vector3(0, coverThinkness, halfHeight - CreateBookMesh.BookPagesDefinition.EdgeGap);
+
+            float thinkCourve = halfThinkness - (coverThinkness / 2);
+            List<Vector3> courvePoints = new List<Vector3>() {
+                new Vector3(0.0f * _direction,0f,0),
+                new Vector3(0.4f* _direction,0.4f,0),
+                new Vector3(0.95f* _direction,0.725f,0),
+                new Vector3(1.6f* _direction,1f,0),
+                new Vector3((halfWidth*2)* _direction,1, 0),
+            };
+
+            topArray = new();
+            bottomArray = new();
+
+            bottomArray.Add(posStart + (courvePoints[0] * thinkCourve));
+            topArray.Add(posTopStart + (courvePoints[0] * thinkCourve));
+
+            bottomArray.Add(posStart + (courvePoints[1] * thinkCourve));
+            topArray.Add(posTopStart + (courvePoints[1] * thinkCourve));
+
+            bottomArray.Add(posStart + (courvePoints[2] * thinkCourve));
+            topArray.Add(posTopStart + (courvePoints[2] * thinkCourve));
+
+            bottomArray.Add(posStart + (courvePoints[3] * thinkCourve));
+            topArray.Add(posTopStart + (courvePoints[3] * thinkCourve));
+
+            // set the X to be the position from the edge.
+            var temppos = posStart + (courvePoints[4] * thinkCourve);
+            temppos.x = (width + halfThinkness - CreateBookMesh.BookPagesDefinition.EdgeGap) * _direction;
+
+            bottomArray.Add(temppos);
+
+            temppos = posTopStart + (courvePoints[4] * thinkCourve);
+            temppos.x = (width + halfThinkness - CreateBookMesh.BookPagesDefinition.EdgeGap) * _direction;
+            topArray.Add(temppos);
+
+            var pos = bottomArray[bottomArray.Count - 1];
+            var posTop = topArray[bottomArray.Count - 1];
+            pos.y = bottomArray[0].y;
+            posTop.y = topArray[0].y;
+            bottomArray.Add(pos);
+            topArray.Add(posTop);
+
+            pos = bottomArray[3];
+            posTop = topArray[3];
+            pos.y = bottomArray[0].y;
+            posTop.y = topArray[0].y;
+            bottomArray.Add(pos);
+            topArray.Add(posTop);
+
+            //GameObject.Find("MarkA").transform.position = bottomArray[0];
+            //GameObject.Find("MarkB").transform.position = topArray[0];
+            /*GameObject.Find("MarkC").transform.position = bottomArray[2];
+            GameObject.Find("MarkD").transform.position = bottomArray[3];
+            GameObject.Find("MarkE").transform.position = bottomArray[5];
+            GameObject.Find("MarkF").transform.position = bottomArray[6];*/
+        }
+    }
+}
